@@ -1,0 +1,20 @@
+version: '3.8'
+services:
+  train:
+    image: python:3.10-slim
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+      - ./data:/app/data
+    command: bash -c "pip install -r requirements.txt && python train_model.py"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend/dist:/app/frontend/dist:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      - train
