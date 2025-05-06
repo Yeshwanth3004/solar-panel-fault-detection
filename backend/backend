@@ -1,0 +1,44 @@
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from io import BytesIO
+from PIL import Image
+import torch, torch.nn.functional as F
+from torchvision import transforms, models
+
+# Load model
+MODEL_PATH = "model/solar_fault_model.pt"
+CLASSES = ["no_fault","fault"]
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = models.resnet18(pretrained=False)
+model.fc = torch.nn.Linear(model.fc.in_features, len(CLASSES))
+model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+model.to(device).eval()
+
+# Preprocess
+transform = transforms.Compose([transforms.Resize((224,224)), transforms.ToTensor()])
+
+app=FastAPI()
+app.mount("/", StaticFiles(directory="../frontend/dist", html=True), name="static")
+
+@app.post("/api/analyze-solar-panel")
+async def analyze(file: UploadFile = File(...)):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(400, "Invalid file type")
+    data = await file.read()
+    img = Image.open(BytesIO(data)).convert("RGB")
+    x = transform(img).unsqueeze(0).to(device)
+    with torch.no_grad():
+        logits = model(x)
+        probs = F.softmax(logits, dim=1)[0].cpu().numpy()
+        idx = int(probs.argmax())
+        conf = float(probs[idx] * 100)
+    return JSONResponse({
+        "hasFault": bool(idx),
+        "faultType": "Detected Fault" if idx==1 else None,
+        "confidence": round(conf,2),
+        "description": (
+            "The model detected a fault in your panel image." if idx==1 else
+            "No visible faults detected."
+        ),
+    })
