@@ -1,0 +1,6 @@
+astapi
+uvicorn[standard]
+pillow
+torch
+torchvision
+numpy
