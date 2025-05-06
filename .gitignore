@@ -1,0 +1,17 @@
+# Node
+/frontend/node_modules
+/frontend/dist
+
+# Python
+/backend/__pycache__/
+/backend/model/
+/backend/*.pt
+
+# Data
+/data/
+
+# VSCode
+/.vscode/
+
+# Env files
+*.env
